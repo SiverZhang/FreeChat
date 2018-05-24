@@ -1,0 +1,305 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+<title>Welcome! Werewolves</title>
+<script type="text/javascript" src="../static/jquery-1.8.0.min.js"></script>
+<script type="text/javascript" src="../static/session.js"></script>
+<script type="text/javascript" src="../static/socket.io.min.js"></script>
+<script type="text/javascript" charset="utf-8">
+        $(document).ready(function() {
+    
+			namespace = '';
+            
+            var room = {{room}};
+            var pname = window.location.search.split("=")[1] ;
+            var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port + namespace);
+            $("#skip").hide();
+            var ping_pong_times = [];
+            var start_time;
+            
+            socket.emit('join',{'room' : room, 'pname' : pname});
+            socket.emit('welcome');
+            
+            //Local functions
+            //
+            //
+            $(window).unload(function(){
+            	socket.emit('leave',{'room' : room, 'pname' : pname});
+            });
+                    
+            window.setInterval(function() {
+                start_time = (new Date).getTime();
+                socket.emit('my_ping');
+            }, 1000);
+
+            function render_room(msg){
+            	$(".player_tr").remove();
+            	if (msg.length > 0){
+            		for (i = 0 ; i < msg.length ; i++){
+            			var table_content  = '';
+            			    table_content += '<tr id = "tr_' + i + '" class = "player_tr">';
+            			    table_content += '<td>' + (i+1) + '</td>';
+            			    table_content += '<td>' + msg[i] + '</td>';
+            			    table_content += '<td><input type="radio" name="radio_player" disabled="disabled" value="'+ msg[i] +'"></td>';
+            			    table_content += '</tr>';
+
+            			$("tr:last").after(table_content);
+            		}
+            	}
+            	
+            	$(":radio").bind("click",function(){
+            		socket.emit('actionmsg',{'pname': pname, 'room':room, 'role': $.session.get('role') ,'target': $(this).val()});
+            	});
+            };
+            
+            function room_reset(){
+            	$('#log').text("");
+            	$(":radio").attr("disabled",true);
+            	$("#confirm").attr("disabled",true);
+            	$("#skip").hide();
+            	$('#showresult').attr('disabled', true);
+            	$('#showresult').unbind('click');
+            	$.session.remove('role');
+            	$.session.remove('target');
+            }
+            
+            
+			//Jquery 
+			//
+			//
+            $('#sendmsg').click(function (){
+            	var msg = $('#chat').val();
+            	if ( msg == ''){
+            		return false;
+            	}
+            	msgdata = {'pname': pname, 'msg': msg};
+            	socket.emit('roommsg', {room : room, data : msgdata, });
+            });
+                     
+            $('form#play').submit(function(event) {
+            	var msg_time = (new Date).toLocaleTimeString();
+            	$('#log').append('<br>' + $('<div/>').text( '[ ' + msg_time + ' ] [ System ] >>>>>>>>>> You has start a new game, Enjoy!').html());
+                var wc = $('#witch').attr("checked")?1:0;
+                var sc = $('#seer').attr("checked")?1:0;
+                var hc = $('#hunter').attr("checked")?1:0;
+                var ic = $('#idiot').attr("checked")?1:0;
+                socket.emit('gamestart',{'room' : room, 'pname' : pname, 'witch' : wc, 'seer' : sc, 'hunter' : hc,'idiot': ic, 'werewolf' : parseInt($('#werewolf').val()), 'villager' : parseInt($('#villager').val())})
+                return false;
+            });
+            
+            $('form#roleaction').submit(function(event) {
+            	var role = $.session.get('role');
+            	var target = $(":radio:checked").val();
+            	if ( role == 'werewolf'){
+            		socket.emit('wolfmsg',{'pname': pname, 'room':room, 'role': role ,'target': target});
+            		console.log(target);
+            	} else if ( role == 'seer' ){
+            		socket.emit('seermsg',{'pname': pname, 'room':room, 'role': role ,'target': target});
+            		$("#confirm").attr("disabled",true);
+            	} else if (role == 'witch' ){
+            		$("#confirm").attr("disabled",true);
+        			$("#skip").hide();
+            		if ( $.session.get('target') == target ){
+            			socket.emit('huntermsg',{'room':room, 'target': ']@[' });
+            			socket.emit('endday',{'room':room,'msg': 'Merry Chrisimas Eve...'});
+            		} else {
+            			var out_t = [$.session.get('target'),target];
+            			socket.emit('huntermsg',{'room':room, 'target': target });
+            			socket.emit('endday',{'room':room,'msg': out_t.sort() + ', are both died..'});
+            		}
+            	}
+                return false;
+            });
+            
+            $('#skip').click(function (){
+            	socket.emit('huntermsg',{'room':room, 'target': ']@[' });
+    			socket.emit('endday',{'room':room,'msg': $.session.get('target') + ' has been killed'});
+    			$("#confirm").attr("disabled",true);
+    			$("#skip").hide();
+            });
+            
+            //Handle socket io
+            //
+            //
+            socket.on('my_pong', function() {
+                var latency = (new Date).getTime() - start_time;
+                ping_pong_times.push(latency);
+                ping_pong_times = ping_pong_times.slice(-30); // keep last 30 samples
+                var sum = 0;
+                for (var i = 0; i < ping_pong_times.length; i++)
+                    sum += ping_pong_times[i];
+                $('#ping-pong').text(Math.round(10 * sum / ping_pong_times.length) / 10);
+            });
+            
+            socket.on('welcome', function(msg) {
+                $('#log').append('<br>' + $('<div/>').text('Welcome to join this room ' + room ).html());
+            });
+            
+            socket.on('room', function(msg) {
+            	render_room(msg.room_mates);
+            });
+            
+            socket.on('roommsg', function(msg) {
+            	var msg_time = (new Date).toLocaleTimeString();
+                $('#log').append('<br>' + $('<div/>').text( '[ ' + msg_time + ' ] [' + msg.pname + '] Said : ' + msg.data).html());
+            });
+            
+            socket.on('sysmsg', function(msg) {
+                $('#log').append('<br>' + $('<div/>').text('The name : [[' + msg.pname + ']] had been used in room : ' + msg.room ).html());
+            });
+            
+            socket.on('players', function(msg) {
+            	room_reset();
+            	var msg_time = (new Date).toLocaleTimeString();
+            	$.session.set('role', msg.players[pname]);
+            	$('#log').append('<br>' + $('<div/>').text('===================New Game has been started, Enjoy!=========================').html());
+            	if (msg.players[pname] == 'werewolf'){
+                	$('#log').append('<br>' + $('<div/>').text( '[ ' + msg_time + ' ] [ System ] >>>>>>>>>> *' + pname + "* your role is [Werewolf], Chose your target from player list").html());
+            		$("#confirm").attr("disabled",false);
+        			$(":radio").attr("disabled",false);
+            	}
+            	else if (msg.players[pname] == 'villager')
+                	$('#log').append('<br>' + $('<div/>').text( '[ ' + msg_time + ' ] [ System ] >>>>>>>>>> *' + pname + "* your role is [Villager]").html());
+            	else if (msg.players[pname] == 'witch'){
+                	$('#log').append('<br>' + $('<div/>').text( '[ ' + msg_time + ' ] [ System ] >>>>>>>>>> *' + pname + "* your role is [Witch], Pls wait until the end of werewolves turn").html());
+            	}
+            	else if (msg.players[pname] == 'hunter')
+                	$('#log').append('<br>' + $('<div/>').text( '[ ' + msg_time + ' ] [ System ] >>>>>>>>>> *' + pname + "* your role is [Hunter]").html());
+            	else if (msg.players[pname] == 'seer'){
+                	$('#log').append('<br>' + $('<div/>').text( '[ ' + msg_time + ' ] [ System ] >>>>>>>>>> *' + pname + "* your role is [Seer], Chose your target from player list").html());
+            		$("#confirm").attr("disabled",false);
+        			$(":radio").attr("disabled",false);
+            	}
+            	else if (msg.players[pname] == 'idiot')
+                	$('#log').append('<br>' + $('<div/>').text( '[ ' + msg_time + ' ] [ System ] >>>>>>>>>> *' + pname + "* your role is [Idiot]").html());
+            	else
+            		$('#log').append('<br>' + $('<div/>').text( '[ ' + msg_time + ' ] [ System ] >>>>>>>>>> *' + pname + "* you are not in this game, pls check with local team").html());
+            	
+            });
+            
+            socket.on('actionmsg', function(msg) {
+            	var msg_time = (new Date).toLocaleTimeString();
+            	var role = $.session.get('role');
+            	if (role == 'werewolf' && msg.role == 'werewolf'){
+                	$('#log').append('<br>' + $('<div/>').text( '[ ' + msg_time + ' ] [Werewolf] >>>>>>>>>> *' + pname + ", want to kill *" + msg.target + '*'  ).html());
+            	}
+	           	else if (role == 'witch' && msg.role == 'witch'){
+	           		$('#log').append('<br>' + $('<div/>').text( '[ ' + msg_time + ' ] [  Witch ] >>>>>>>>>> Use your potion on *' + msg.target + '*'  ).html());
+	            }
+            	else if (role == 'seer' && msg.role == 'seer'){
+                	$('#log').append('<br>' + $('<div/>').text( '[ ' + msg_time + ' ] [  Seer  ] >>>>>>>>>> Check *' + msg.target + "*'s identity" ).html());
+            	};
+	           	
+            });
+            
+            socket.on('confirmmsg', function(msg) {
+            	var msg_time = (new Date).toLocaleTimeString();
+            	var role = $.session.get('role');
+            	if ((role == 'werewolf' || role == 'witch') && msg.role == 'werewolf'){
+            		$("#confirm").attr("disabled",true);
+            		$(":radio").attr("disabled",true);
+            		$('#log').append('<br>' + $('<div/>').text( '[ ' + msg_time + ' ] [Werewolf] >>>>>>>>>> *' + msg.target + '* has been killed!'  ).html());
+            		$.session.set('target',msg.target);
+            		if ( role == 'witch'){
+            			$("#confirm").attr("disabled",false);
+            			$("#skip").show();
+            			$("#skip").attr('disabled',false);
+            			$(":radio").attr("disabled",false);
+            			$('#log').append('<br>' + $('<div/>').text( '[ ' + msg_time + ' ] [  Witch ] >>>>>>>>>> Use your potion on *' + msg.target + '* to save, or other player to kill, press [Skip] to skip'  ).html());
+            		}
+            	}
+            	else if (role == 'seer' && msg.role == 'seer'){
+                	$('#log').append('<br>' + $('<div/>').text( '[ ' + msg_time + ' ] [  Seer  ] >>>>>>>>>> *' + msg.target + '* is ' + msg.ind ).html());
+            	};
+	           	
+            });
+            
+            socket.on('seeract', function(msg) {
+            	if ( pname == msg.target){
+            		var ind = ($.session.get('role') == 'werewolf')?'werewolf':'[!not!] werewolf';
+            		socket.emit('seeract',{'room' : room, 'pname' : pname, 'role': 'seer', 'target': msg.target, 'ind': ind});
+            	};
+            });
+            
+            socket.on('huntermsg', function(msg) {
+            	var msg_time = (new Date).toLocaleTimeString();
+            	console.log("hunter");
+            	if ( $.session.get('role') == 'hunter'){
+            		if (msg.target == pname){
+            			$('#log').append('<br>' + $('<div/>').text( '[ ' + msg_time + ' ] [ Hunter ] >>>>>>>>>> You cannot show your identity' ).html());           		
+               		} else {
+                		$('#log').append('<br>' + $('<div/>').text( '[ ' + msg_time + ' ] [ Hunter ] >>>>>>>>>> You are free to show your identity if you are died').html());           		
+               		};
+            	};
+            });
+            
+            socket.on('endday', function(msg) {
+            	var msg_time = (new Date).toLocaleTimeString();
+            	$('#log').append('<br>' + $('<div/>').text( '>>>>>>>>>>>>>>Thank you for freechat with Siver<<<<<<<<<<<<<<<<<<' ).html());      
+            	$('#log').append('<br>' + $('<div/>').text( '>>>>>>>>>>>You may check the result after The chief election<<<<<<<<<<' ).html());   
+            	$('#showresult').bind("click", function(){
+            		$('#log').append('<br>' + $('<div/>').text( '[ ' + msg_time + ' ] [  All   ] >>>>>>>>>>> ' + msg.msg ).html());           		
+            	});
+            	$('#showresult').attr('disabled', false);
+            	$.session.remove('role');
+            	$.session.remove('target');
+            });
+            
+        });
+        
+    </script>
+</head>
+<body>
+	<h1>Welcome to Siver's freechat :D</h1>
+	<input type="button" value="Back to Home Page"
+		onClick="location.href='/'">
+	<br />
+
+	<br /> Average latency:
+	<b><span id="ping-pong"></span>ms</b>
+	<br /> Send Message Within Room :
+	<input type="text" id="chat" value=""></input>
+	<input type="button" id="sendmsg" value="Send"></input>
+	<br />
+	<br />
+	<hr />
+
+	<form id="play" method="POST" action='#'>
+		Witch <input type="checkbox" checked=false id="witch" value="1">
+		Seer <input type="checkbox" checked=false id="seer" value="1">
+		Hunter <input type="checkbox" checked=false id="hunter" value="1">
+		Idiot <input type="checkbox" checked=false id="idiot" value="1"><br />
+		Werewolves <select id="werewolf">
+			<option value="1" selected="selected">1</option>
+			<option value="2">2</option>
+			<option value="3">3</option>
+			<option value="4">4</option>
+			<option value="5">5</option>
+		</select> Villagers <select id="villager">
+			<option value="1" selected="selected">1</option>
+			<option value="2">2</option>
+			<option value="3">3</option>
+			<option value="4">4</option>
+			<option value="5">5</option>
+		</select> </br> <input type="submit" id="start" value="Game Start!!!"> <br />
+		<br />
+	</form>
+	<hr />
+	<b>Player list</b>
+	<form id="roleaction" method="POST" action='#'>
+		<table id="table_pl" border="1" width="430px">
+			<tr id="tr_pl">
+				<td width="100">No.</td>
+				<td width="150">Name</td>
+				<td width="150">Action</td>
+			</tr>
+		</table>
+		<br /> <input type="submit" id="confirm" value="Confirm Action"
+			disabled="disabled"></input> <input type="button" id="showresult"
+			value="Result" disabled="disabled"></input> <input type="button"
+			id="skip" value="Skip" disabled="disabled"></input>
+	</form>
+	<h2>Receive:</h2>
+	<div id="log"></div>
+</body>
+</html>

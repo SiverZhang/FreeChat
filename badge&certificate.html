@@ -1,0 +1,197 @@
+<!doctype html>
+<html>
+
+<head>
+	<title>Bar Chart</title>
+	<script src="http://www.chartjs.org/dist/2.7.2/Chart.bundle.js"></script>
+	<script src="http://www.chartjs.org/samples/latest/utils.js"></script>
+	<style>
+	canvas {
+		-moz-user-select: none;
+		-webkit-user-select: none;
+		-ms-user-select: none;
+	}
+	</style>
+</head>
+
+<body>
+	<div id="container" style="width: 80%;">
+		<canvas id="canvas"></canvas>
+	</div>
+	
+	<button id="overall">OverAll</button>
+	<button id="bybadges">By Badges</button>
+	<button id="bycertificate">By Certificates</button>
+	<button id="total">Total</button>
+	<script>
+		function sleep(milliseconds) {
+  var start = new Date().getTime();
+  for (var i = 0; i < 1e7; i++) {
+    if ((new Date().getTime() - start) > milliseconds){
+      break;
+    }
+  }
+}
+		var badges = {"hits":[{"_index":"hone","_type":"badge","_id":"AWLXxFfAiogEeq6f4Mc5","_score":1,"_source":{"name":"Lu Ting","badge":["Enterprise Design Thinking Practitioner","Education Industry Foundations","IBM Agile Achiever","IBM Agile Advocate","IBM Agile Explorer"]}},{"_index":"hone","_type":"badge","_id":"AWLX4G-AiogEeq6f4MdC","_score":1,"_source":{"name":"Wang Chen Long","badge":["Banking Insights & Solutions","Banking Industry Foundations","IBM Agile Advocate","IBM Blockchain Essentials","IBM Agile Explorer","IBM Certified Application Developer - Cloud Platform V1","IBM Associate Project Manager"],"certificate":["CPRE","PMP","CSPO"]}},{"_index":"hone","_type":"badge","_id":"AWLX15gFiogEeq6f4Mc9","_score":1,"_source":{"name":"Chen Can","badge":["IBM Agile Explorer","IBM Certified Application Developer - Cloud Platform V1","IBM Agile Advocate","Cognitive Practitioner","Enterprise Design Thinking Practitioner","Automotive Industry Foundations"]}},{"_index":"hone","_type":"badge","_id":"AWLcLf8Zw9j91NSYmDr0","_score":1,"_source":{"name":"Zhang Jun","badge":["Cognitive Practitioner badge","Automotive Industry Foundations","IBM Agile Advocate","Enterprise Design Thinking Practitioner","IBM Certified Application Developer - Cloud Platform V1","IBM Agile Explorer"]}},{"_index":"hone","_type":"badge","_id":"AWLXxRrDiogEeq6f4Mc6","_score":1,"_source":{"name":"Zhang Shi Wei","badge":["IBM Agile Achiever","IBM Certified Application Developer - Cloud Platform V1"],"certificate":["CPRE","PMP","CSPO","CSM"]}},{"_index":"hone","_type":"badge","_id":"AWLcPIsew9j91NSYmDsF","_score":1,"_source":{"name":"Gao Shuang","badge":["Automotive Industry Foundations","IBM Agile Explorer","IBM Certified Application Developer - Cloud Platform V1"]}},{"_index":"hone","_type":"badge","_id":"AWLX3QIwiogEeq6f4MdA","_score":1,"_source":{"name":"Li Zeng","badge":["Automotive Industry Foundations","Cognitive Practitioner","Enterprise Design Thinking Practitioner","Blockchain Essentials for Developers","Technical Specialist Profession Certification - Level 1"]}},{"_index":"hone","_type":"badge","_id":"AWLcOI3gw9j91NSYmDsA","_score":1,"_source":{"name":"Li Hai Ying","badge":["IBM Agile Explorer","IBM Certified Application Developer - Cloud Platform V1","IBM Agile Advocate","Enterprise Design Thinking Practitioner","IBM Agile Champion","Automotive Industry Foundations"],"certificate":["CSPO","PMI-ACP"]}},{"_index":"hone","_type":"badge","_id":"AWLcO_nnw9j91NSYmDsE","_score":1,"_source":{"name":"Li Kai","badge":["Financial Markets Industry Foundations","IBM Agile Explorer"]}},{"_index":"hone","_type":"badge","_id":"AWLcOt9Vw9j91NSYmDsC","_score":1,"_source":{"name":"Yuan Bing","badge":["IBM Recognized Teacher/ Educator","Automotive Industry Foundations","IBM Recognized Teacher/ Educator","IBM Agile Advocate","IBM Agile Explorer","Cloud App Developer","Bluemix Essentials","IBM Watson Data Platform - Sales Foundations","IBM Associate Project Manager","Enterprise Design Thinking Practitioner"]}},{"_index":"hone","_type":"badge","_id":"AWLcO4Haw9j91NSYmDsD","_score":1,"_source":{"name":"Lin Wei","badge":["Financial Markets Industry Foundations","IBM Certified Application Developer - Cloud Platform V1"]}},{"_index":"hone","_type":"badge","_id":"AWLX2e6OiogEeq6f4Mc-","_score":1,"_source":{"name":"Wu Gang","badge":["Education Industry Foundations","Cognitive Practitioner","IBM Agile Explorer","IBM Certified Application Developer - Cloud Platform V1"]}},{"_index":"hone","_type":"badge","_id":"AWLX4lqwiogEeq6f4MdE","_score":1,"_source":{"name":"Gao Zhi Xia","badge":["Automotive Industry Foundations","Cognitive Practitioner","IBM Recognized Teacher/ Educator","Enterprise Design Thinking Practitioner","IBM Agile Advocate","IBM Agile Explorer","IBM Certified Application Developer - Cloud Platform V1"]}},{"_index":"hone","_type":"badge","_id":"AWLcPPW_w9j91NSYmDsG","_score":1,"_source":{"name":"Zhou Hui Juan","badge":["Blockchain Essentials for Developers","IBM Certified Application Developer - Cloud Platform V1"]}},{"_index":"hone","_type":"badge","_id":"AWLcPWs7w9j91NSYmDsH","_score":1,"_source":{"name":"Huang Yan","badge":["Automotive Industry Foundations","IBM Agile Explorer"]}}]};
+		var color = Chart.helpers.color;
+		var names = new Array();
+		var pbadges = new Array();
+		var tbadges = {};
+		var tbadgescount = new Array();
+		var tcertificate = {};
+		var pcertificate = new Array();
+		var badgename;
+		var certificatename;
+		var totalbadges = 0;
+		var totalcertificate = 0;
+		for(i=0;i<badges.hits.length;i++){
+			names[i]=badges.hits[i]._source.name;
+			pbadges[i]=badges.hits[i]._source.badge.length;
+		
+			for(j=0;j<badges.hits[i]._source.badge.length;j++){
+				badgename = badges.hits[i]._source.badge[j];
+				totalbadges += 1;
+				sleep(10);
+				tbadges[badgename]?(tbadges[badgename]+=1):(tbadges[badgename]=1);
+			}
+			if (badges.hits[i]._source.certificate){
+				pcertificate[i]=badges.hits[i]._source.certificate.length;
+				for(k=0;k<badges.hits[i]._source.certificate.length;k++){
+					certificatename = badges.hits[i]._source.certificate[k];
+					totalcertificate += 1;
+					sleep(10);
+					tcertificate[certificatename]?(tcertificate[certificatename]+=1):(tcertificate[certificatename]=1);
+				}
+			} else{
+				pcertificate[i]=0;
+			}
+			
+		}
+		
+		//console.log(tbadges);
+		//console.log(tcertificate);
+		var barChartData = {
+			labels: names,
+			datasets: [{
+				label: 'Badge',
+				backgroundColor: color(window.chartColors.red).alpha(0.5).rgbString(),
+				borderColor: window.chartColors.red,
+				borderWidth: 1,
+				data: pbadges
+			}, {
+				label: 'Certificate',
+				backgroundColor: color(window.chartColors.blue).alpha(0.5).rgbString(),
+				borderColor: window.chartColors.blue,
+				borderWidth: 1,
+				data: pcertificate
+			}]
+
+		};
+
+		window.onload = function() {
+			var ctx = document.getElementById('canvas').getContext('2d');
+			window.myBar = new Chart(ctx, {
+				type: 'bar',
+				data: barChartData,
+				options: {
+					responsive: true,
+					legend: {
+						position: 'top',
+					},
+					title: {
+						display: true,
+						text: 'Hone Badge & Certificate'
+					},
+					scales: {
+						xAxes: [{
+							ticks: {
+								autoSkip: false
+								//maxTicksLimit: 20
+							}
+						}],
+                            yAxes: [{
+                                ticks: {
+                                    beginAtZero: true,
+									stepSize: 1
+                                }
+                            }]
+                        }
+				}
+			});
+
+		};
+		
+		document.getElementById('overall').addEventListener('click', function() {
+			document.location.reload();
+		});
+
+		document.getElementById('bybadges').addEventListener('click', function() {
+			var badgenames = [];
+			var i = 0;
+			for (var blabel in tbadges){
+				badgenames[i]=blabel;
+				tbadgescount[i] = tbadges[blabel];
+				i++;
+			} 
+			
+			barChartData.labels = badgenames;
+			barChartData.datasets = [{
+				label: 'By Badge',
+				backgroundColor: color(window.chartColors.red).alpha(0.5).rgbString(),
+				borderColor: window.chartColors.red,
+				borderWidth: 1,
+				data: tbadgescount
+			}]
+			console.log(barChartData.labels);
+			
+			window.myBar.update();
+		});
+		
+		document.getElementById('bycertificate').addEventListener('click', function() {
+			var certificatenames = [];
+			var tcercount = [];
+			var i = 0;
+			for (var blabel in tcertificate){
+				certificatenames[i]=blabel;
+				tcercount[i] = tcertificate[blabel];
+				i++;
+			} 
+			
+			barChartData.labels = certificatenames;
+			barChartData.datasets = [{
+				label: 'By Certificate',
+				backgroundColor: color(window.chartColors.blue).alpha(0.5).rgbString(),
+				borderColor: window.chartColors.blue,
+				borderWidth: 1,
+				data: tcercount
+			}]
+			console.log(barChartData.labels);
+			
+			window.myBar.update();
+		});
+		
+		document.getElementById('total').addEventListener('click', function() {
+			
+			barChartData.labels = ["HONE"];
+			barChartData.datasets = [{
+				label: 'Total Badges',
+				backgroundColor: color(window.chartColors.red).alpha(0.5).rgbString(),
+				borderColor: window.chartColors.red,
+				borderWidth: 1,
+				data: [totalbadges]
+			}, {
+				label: 'Total Certificates',
+				backgroundColor: color(window.chartColors.blue).alpha(0.5).rgbString(),
+				borderColor: window.chartColors.blue,
+				borderWidth: 1,
+				data: [totalcertificate]
+			}]
+			
+			window.myBar.update();
+		});
+
+	
+	</script>
+</body>
+
+</html>

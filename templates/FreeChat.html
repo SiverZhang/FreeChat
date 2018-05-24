@@ -1,0 +1,75 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>Welcome! Werewolves</title>
+    <script type="text/javascript"
+	src="../static/jquery-1.8.0.min.js"></script>
+    <script type="text/javascript" src="../static/socket.io.min.js"></script>
+    <script type="text/javascript" charset="utf-8">
+        $(document).ready(function() {
+
+            namespace = '';
+
+            var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port + namespace);
+
+            // Interval function that tests message latency by sending a "ping"
+            // message. The server then responds with a "pong" message and the
+            // round trip time is measured.
+            var ping_pong_times = [];
+            var start_time;
+            window.setInterval(function() {
+                start_time = (new Date).getTime();
+                socket.emit('my_ping');
+            }, 1000);
+            socket.on('my_pong', function() {
+                var latency = (new Date).getTime() - start_time;
+                ping_pong_times.push(latency);
+                ping_pong_times = ping_pong_times.slice(-30); // keep last 30 samples
+                var sum = 0;
+                for (var i = 0; i < ping_pong_times.length; i++)
+                    sum += ping_pong_times[i];
+                $('#ping-pong').text(Math.round(10 * sum / ping_pong_times.length) / 10);
+            });
+            
+			// Join the chatgroup
+            socket.on('locate', function(msg) {
+                $('#log').append('<br>' + $('<div/>').text('Received : ' + msg.r_no).html());
+                msg.url += "?player=" + msg.pname;
+                window.location = msg.url;
+            });
+
+            $('form#locate').submit(function(event) {
+            	if ( $('#pname').val() == ''){
+            		$('#log').append('<br>' + $('<div/>').text('[ERROR] >>>>> The name can not be space' ).html());
+            		return false;
+            	}
+            	if ( $('#r_no').val() == ''){
+            		$('#log').append('<br>' + $('<div/>').text('[ERROR] >>>>> The room can not be blank' ).html());
+            		return false;
+            	}
+                socket.emit('locate', {room: parseInt($('#r_no').val()),pname:$('#pname').val()});
+                return false;
+            });
+            
+            
+            
+            // Display Message
+            socket.on('sysmsg', function(msg) {
+                $('#log').append('<br>' + $('<div/>').text('[ERROR] >>>>> The name : [[' + msg.pname + ']] had been used in room : ' + msg.room ).html());
+            });
+            
+        });
+    </script>
+</head>
+<body>
+    <h1>Welcome to Siver's freechat channel</h1>
+    <p>Average latency: <b><span id="ping-pong"></span>ms</b></p>
+    <form id="locate" method="POST" action='/room.html'>
+        <input type="text" name="r_no" id="r_no" placeholder="Room No.">
+        <input type="text" name="pname" id="pname" placeholder="Your Name">
+        <input type="submit" value="Join!">
+    </form>
+    <h2>Receive:</h2>
+    <div id="log"></div>
+</body>
+</html>
