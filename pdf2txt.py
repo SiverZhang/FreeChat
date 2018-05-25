@@ -1,8 +1,9 @@
 from io import StringIO
-from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
 from pdfminer.converter import TextConverter
 from pdfminer.layout import *
+from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
 from pdfminer.pdfpage import PDFPage, PDFTextExtractionNotAllowed
+
 
 filename = "test2.pdf"
 def pdf2txt():
@@ -16,7 +17,7 @@ def pdf2txt():
        
         infile = open(filename,'rb')
         for page in PDFPage.get_pages(infile):
-            #仅检索前10页内容
+            #仅检索前10页内�?
             if pi > 9:
                 break
             interpreter.process_page(page)

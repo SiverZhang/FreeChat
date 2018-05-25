@@ -1,5 +1,6 @@
 import sys
 
+
 if sys.argv[1]:
     option = sys.argv[1][2:]
     if option == 'version':

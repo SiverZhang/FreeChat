@@ -1,11 +1,13 @@
+from asn1crypto.cms import RoleSyntax
 from flask import Flask
 from flask import render_template, request
 from flask_socketio import *
-import requests
-from pip._vendor.requests.packages.urllib3 import response
-import re
-from asn1crypto.cms import RoleSyntax
+# from pip._vendor.requests.packages.urllib3 import response
+from urllib3 import response
 from random import shuffle
+import re
+import requests
+
 
 async_mode = None
 
@@ -165,6 +167,6 @@ def room(room):
     return render_template('room.html', room = room)
 
 if __name__ == '__main__':
-    #socketio.run(app, port=5000, debug=True)
+#     socketio.run(app, port=5000, debug=True)
 	socketio.run(app,host="0.0.0.0", port=5000)
     
