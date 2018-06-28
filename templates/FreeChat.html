@@ -51,6 +51,15 @@
                 return false;
             });
             
+            $('form#clear').submit(function(event) {
+            	if ( $('#rc_no').val() == ''){
+            		$('#log').append('<br>' + $('<div/>').text('[ERROR] >>>>> The room can not be blank' ).html());
+            		return false;
+            	}
+                socket.emit('clearroom', {room: parseInt($('#rc_no').val())});
+                return false;
+            });
+            
             
             
             // Display Message
@@ -64,10 +73,17 @@
 <body>
     <h1>Welcome to Siver's freechat channel</h1>
     <p>Average latency: <b><span id="ping-pong"></span>ms</b></p>
+    <p>Start Here!</p>
     <form id="locate" method="POST" action='/room.html'>
-        <input type="text" name="r_no" id="r_no" placeholder="Room No.">
-        <input type="text" name="pname" id="pname" placeholder="Your Name">
+        Room No. <input type="text" name="r_no" id="r_no" placeholder="Room No.">
+        Name <input type="text" name="pname" id="pname" placeholder="Your Name">
         <input type="submit" value="Join!">
+    </form>
+    <p>
+    <p>Clean the Room!</p>
+    <form id="clear" method="POST" action='#'>
+        Room No. <input type="text" name="r_no" id="rc_no" placeholder="Room No.">
+        <input type="submit" value="Clear!">
     </form>
     <h2>Receive:</h2>
     <div id="log"></div>

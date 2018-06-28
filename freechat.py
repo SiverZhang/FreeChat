@@ -1,12 +1,12 @@
 from asn1crypto.cms import RoleSyntax
 from flask import Flask
-from flask import render_template, request
+from flask import render_template, request, Response
 from flask_socketio import *
 # from pip._vendor.requests.packages.urllib3 import response
-from urllib3 import response
+# from urllib3 import response
 from random import shuffle
 import re
-import requests
+# import requests
 
 
 async_mode = None
@@ -49,6 +49,13 @@ def locate_room(message):
          {'room': message['room'], 'pname':message['pname'],
           'url':'/room/' + str(message['room'])})
     
+@socketio.on('clearroom')
+def clear_room(message):
+    chat_session[message['room']].clear()
+    
+#     print(chat_session)
+#     leave_room(message['room'])
+    
 @socketio.on('join')
 def join(message):
     code = chatUpdate("Add", message)
@@ -64,16 +71,20 @@ def join(message):
 
 @socketio.on('leave')
 def leave(message):
-    chat_session[message['room']].remove(message['pname'])
-
-    emit('roommsg', 
-         {'pname' : "System" , "data" : message['pname'] + " has left the room..." },
-         room=message['room'])
-    emit('room', 
-         {'room_mates' : chat_session[message['room']] },
-         room=message['room'])
+    try:
+        chat_session[message['room']].remove(message['pname'])
+        
+        emit('roommsg', 
+             {'pname' : "System" , "data" : message['pname'] + " has left the room..." },
+             room=message['room'])
+        emit('room', 
+             {'room_mates' : chat_session[message['room']] },
+             room=message['room'])
+        
+        leave_room(message['room'])
     
-    leave_room(message['room'])
+    except:
+        pass
     
 @socketio.on('roommsg')
 def room_message(message):
@@ -85,6 +96,7 @@ def room_message(message):
 def gamestart(message):
     roles = []
     players = {}
+    werewolf = ''
     room = int(message['room'])
     pname = message['pname']
     
@@ -105,10 +117,12 @@ def gamestart(message):
         shuffle(roles)
         while i<len(roles):
             players.update( {chat_session[room][i] : roles[i]} )
+            if roles[i] == 'werewolf':
+                werewolf += '[' + chat_session[room][i] + '], '
             i += 1
         print(players)
         emit('players',
-             {'players' : players},
+             {'players' : players, 'werewolf' : werewolf},
              room=room)
     
 
@@ -121,7 +135,7 @@ def app_role(roles,count,role):
 
 @socketio.on('actionmsg')
 def actionmsg(message):
-    print(message)
+#     print(message)
     emit('actionmsg', 
              {'pname': message['pname'], 'room': message['room'], 'role': message['role'], 'target':message['target']}, 
              room=message['room'])
